@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - master
+      - test
   workflow_dispatch:
     inputs:
       full_resync:
@@ -15,11 +15,11 @@ on:
 jobs:
   sync-scripts:
     runs-on: ubuntu-latest
-    # Points this run at a GitHub Environment (Settings -> Environments).
-    # That environment's own "Environment variables" (and, optionally,
-    # environment-scoped secrets) are what `vars.*` / `secrets.*` resolve to
-    # below. Rename this to match whatever environment name you create.
-    environment: test
+    # Picks the GitHub Environment (Settings -> Environments) for this run
+    # based on the branch: main -> "production", anything else (e.g. the
+    # "test" branch) -> "test". Add more branch/environment pairs here if
+    # you introduce further branches later.
+    environment: ${{ github.ref_name == 'main' && 'production' || 'test' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,8 +38,8 @@ jobs:
           ODSL_ENDPOINT: https://api.opendatadsl.com/api/script/v1/private
           ODSL_USERNAME: ${{ secrets.ODSL_USERNAME }}
           ODSL_APIKEY: ${{ secrets.ODSL_APIKEY }}
-          # Set in the "odsl-target" GitHub Environment's own Environment
-          # variables (Settings -> Environments -> odsl-target -> Variables).
+          # Read from the ODSL_ENVIRONMENT variable of whichever GitHub
+          # Environment this run resolved to above ("production" or "test").
           # Sent as the x-odsl-environment header on every POST/DELETE call.
           ODSL_ENVIRONMENT: ${{ vars.ODSL_ENVIRONMENT }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
