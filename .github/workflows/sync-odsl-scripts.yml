@@ -42,5 +42,5 @@ jobs:
           GITHUB_AFTER: ${{ github.event.after }}
           FULL_RESYNC: ${{ github.event.inputs.full_resync }}
           REPO_NAME: ${{ github.event.repository.name }}
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
         run: python3 scripts/sync_odsl_scripts.py
