@@ -1,0 +1,45 @@
+name: Sync ODSL Scripts
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      full_resync:
+        description: "Push every matching file in the repo, not just the diff since the last commit"
+        type: boolean
+        default: false
+      environment:
+        description: "The data environment to push the scripts to"
+        type: string
+        default: "production"
+
+jobs:
+  sync-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history is needed so the diff between the push's before/after
+          # commits (or an arbitrary older commit) can always be resolved.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync changed scripts to ODSL
+        env:
+          ODSL_ENDPOINT: https://api.opendatadsl.com/api/script/v1/private
+          ODSL_USERNAME: ${{ secrets.ODSL_USERNAME }}
+          ODSL_APIKEY: ${{ secrets.ODSL_APIKEY }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BEFORE: ${{ github.event.before }}
+          GITHUB_AFTER: ${{ github.event.after }}
+          FULL_RESYNC: ${{ github.event.inputs.full_resync }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          ENVIRONMENT: "test"
+        run: python3 scripts/sync_odsl_scripts.py
