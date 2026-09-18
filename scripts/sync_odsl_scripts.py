@@ -19,7 +19,10 @@ Required env vars:
   GITHUB_BEFORE     commit SHA before the push (github.event.before)
   GITHUB_AFTER      commit SHA after the push (github.event.after)
   FULL_RESYNC       "true"/"false" - only relevant for workflow_dispatch
-  ENVIRONMENT		The name of the data environment to push the scripts to, defaults to production
+
+Optional env vars:
+  ODSL_ENVIRONMENT  value sent as the x-odsl-environment header on every
+                     POST/DELETE call. Left unset or empty, no header is sent.
 """
 
 import base64
@@ -109,7 +112,7 @@ def basic_auth_header(username, password):
     return f"Basic {token}"
 
 
-def post_script(endpoint, auth_header, repo_name, path, environment):
+def post_script(endpoint, auth_header, environment, repo_name, path):
     if not os.path.isfile(path):
         print(f"::warning::{path} listed as changed but not found on disk, skipping")
         return
@@ -128,7 +131,8 @@ def post_script(endpoint, auth_header, repo_name, path, environment):
     req = urllib.request.Request(endpoint, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", auth_header)
-    req.add_header("x-odsl-environment", environment)
+    if environment:
+        req.add_header("x-odsl-environment", environment)
     try:
         with urllib.request.urlopen(req) as resp:
             print(f"POST {path} -> {script_id}: {resp.status}")
@@ -141,13 +145,14 @@ def post_script(endpoint, auth_header, repo_name, path, environment):
         sys.exit(1)
 
 
-def delete_script(endpoint, auth_header, repo_name, path, environment):
+def delete_script(endpoint, auth_header, environment, repo_name, path):
     script_id = build_id(repo_name, path)
     encoded_id = urllib.parse.quote(script_id, safe="")
     url = f"{endpoint}/{encoded_id}/*"
     req = urllib.request.Request(url, method="DELETE")
     req.add_header("Authorization", auth_header)
-    req.add_header("x-odsl-environment", environment)
+    if environment:
+        req.add_header("x-odsl-environment", environment)
     try:
         with urllib.request.urlopen(req) as resp:
             print(f"DELETE {path} -> {script_id}: {resp.status}")
@@ -178,9 +183,14 @@ def main():
     username = os.environ["ODSL_USERNAME"]
     apikey = os.environ["ODSL_APIKEY"]
     repo_name = os.environ["REPO_NAME"]
-    environment = os.environ["ENVIRONMENT"]
     event_name = os.environ.get("GITHUB_EVENT_NAME", "push")
+    environment = os.environ.get("ODSL_ENVIRONMENT", "").strip()
     auth_header = basic_auth_header(username, apikey)
+
+    if environment:
+        print(f"Targeting ODSL environment: {environment}")
+    else:
+        print("No ODSL_ENVIRONMENT set - x-odsl-environment header will be omitted")
 
     if event_name == "workflow_dispatch" and os.environ.get("FULL_RESYNC", "false").lower() == "true":
         all_files = run_git("ls-files").splitlines()
@@ -209,10 +219,10 @@ def main():
     print(f"Scripts to delete ({len(deletes)}): {deletes}")
 
     for path in upserts:
-        post_script(endpoint, auth_header, repo_name, path, environment)
+        post_script(endpoint, auth_header, environment, repo_name, path)
 
     for path in deletes:
-        delete_script(endpoint, auth_header, repo_name, path, environment)
+        delete_script(endpoint, auth_header, environment, repo_name, path)
 
 
 if __name__ == "__main__":

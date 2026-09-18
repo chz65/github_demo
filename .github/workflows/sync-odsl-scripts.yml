@@ -4,20 +4,21 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
     inputs:
       full_resync:
         description: "Push every matching file in the repo, not just the diff since the last commit"
         type: boolean
         default: false
-      environment:
-        description: "The data environment to push the scripts to"
-        type: string
-        default: "production"
 
 jobs:
   sync-scripts:
     runs-on: ubuntu-latest
+    # Points this run at a GitHub Environment (Settings -> Environments).
+    # That environment's own "Environment variables" (and, optionally,
+    # environment-scoped secrets) are what `vars.*` / `secrets.*` resolve to
+    # below. Rename this to match whatever environment name you create.
     environment: test
     steps:
       - name: Checkout repository
@@ -37,6 +38,10 @@ jobs:
           ODSL_ENDPOINT: https://api.opendatadsl.com/api/script/v1/private
           ODSL_USERNAME: ${{ secrets.ODSL_USERNAME }}
           ODSL_APIKEY: ${{ secrets.ODSL_APIKEY }}
+          # Set in the "odsl-target" GitHub Environment's own Environment
+          # variables (Settings -> Environments -> odsl-target -> Variables).
+          # Sent as the x-odsl-environment header on every POST/DELETE call.
+          ODSL_ENVIRONMENT: ${{ vars.ODSL_ENVIRONMENT }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_BEFORE: ${{ github.event.before }}
           GITHUB_AFTER: ${{ github.event.after }}
