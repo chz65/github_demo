@@ -18,6 +18,7 @@ on:
 jobs:
   sync-scripts:
     runs-on: ubuntu-latest
+    environment: test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,5 +42,5 @@ jobs:
           GITHUB_AFTER: ${{ github.event.after }}
           FULL_RESYNC: ${{ github.event.inputs.full_resync }}
           REPO_NAME: ${{ github.event.repository.name }}
-          ENVIRONMENT: "test"
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
         run: python3 scripts/sync_odsl_scripts.py

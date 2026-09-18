@@ -19,6 +19,7 @@ Required env vars:
   GITHUB_BEFORE     commit SHA before the push (github.event.before)
   GITHUB_AFTER      commit SHA after the push (github.event.after)
   FULL_RESYNC       "true"/"false" - only relevant for workflow_dispatch
+  ENVIRONMENT		The name of the data environment to push the scripts to, defaults to production
 """
 
 import base64
